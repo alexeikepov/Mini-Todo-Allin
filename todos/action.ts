@@ -99,12 +99,21 @@ export async function addTask(data: any) {
   const userId = cookieStore.get("user_id")?.value;
   if (!userId) throw new Error("Not authorized");
 
-  const { text, categoryId } = data;
+  const text = String(data.text ?? "").trim();
+  const categoryIdStr = String(data.categoryId ?? "");
+  const categoryIdNum = Number(categoryIdStr);
+
+  if (!text) throw new Error("Task text is required");
+  if (!categoryIdStr || Number.isNaN(categoryIdNum) || categoryIdNum <= 0) {
+    throw new Error("Valid category is required");
+  }
+
   await db("todos").insert({
     text,
-    categoryId: Number(categoryId),
+    categoryId: categoryIdNum,
     user_id: Number(userId),
   });
+
   revalidatePath("/user-todo");
 }
 
@@ -140,6 +149,11 @@ export async function deleteCategory(categoryId: number) {
 }
 
 export async function updateTaskCategory(taskId: number, categoryId: number) {
-  await db("todos").where("id", taskId).update({ categoryId });
+  const categoryIdNum = Number(categoryId);
+  if (!categoryIdNum || Number.isNaN(categoryIdNum) || categoryIdNum <= 0) {
+    throw new Error("Valid category is required");
+  }
+
+  await db("todos").where("id", taskId).update({ categoryId: categoryIdNum });
   revalidatePath("/user-todo");
 }

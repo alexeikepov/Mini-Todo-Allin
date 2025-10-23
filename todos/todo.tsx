@@ -18,28 +18,44 @@ interface Todo {
   text: string;
   completed: boolean;
   categoryId?: number;
-  categoryName?: string;
-  username?: string;
   createdAt: string;
   completedAt?: string;
 }
 
-export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
-  const username = todos[0]?.username || "User";
+interface Category {
+  id: number;
+  name: string;
+}
 
-  const grouped = todos.reduce((acc, t) => {
-    const name = t.categoryName || "Uncategorized";
+export default function MainComp({
+  username = "User",
+  todos = [],
+  categories = [],
+}: {
+  username?: string;
+  todos?: Todo[];
+  categories?: Category[];
+}) {
+  const uniqueTodos = todos.filter(
+    (todo, index, self) => index === self.findIndex((t) => t.id === todo.id)
+  );
+
+  const grouped = uniqueTodos.reduce((acc, t) => {
+    const cat = categories.find((c) => c.id === Number(t.categoryId));
+    const name = cat ? cat.name : "Uncategorized";
     (acc[name] ||= []).push(t);
     return acc;
   }, {} as Record<string, Todo[]>);
 
   async function handleAddTask(e: any) {
+    e.preventDefault();
     const data = getFormData(e);
     await addTask(data);
     e.target.reset();
   }
 
   async function handleAddCategory(e: any) {
+    e.preventDefault();
     const data = getFormData(e);
     await addCategory(data);
     e.target.reset();
@@ -79,12 +95,23 @@ export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
             required
             className="flex-1"
           />
-          <Input
+
+          <select
             name="categoryId"
-            placeholder="Enter Category ID"
             required
-            className="w-32"
-          />
+            className="flex items-center px-3 py-2 border rounded-lg"
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select category...
+            </option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
           <Btn className="bg-blue-400" lbl="Add Task" />
         </div>
       </form>
@@ -100,8 +127,8 @@ export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
         </div>
       </form>
 
-      <h2 className="font-bold mb-2">All Todos ({todos.length})</h2>
-      {todos.length === 0 ? (
+      <h2 className="font-bold mb-2">All Todos ({uniqueTodos.length})</h2>
+      {uniqueTodos.length === 0 ? (
         <p className="text-gray-500 italic">No todos yet</p>
       ) : (
         <div className="space-y-6 w-full">
@@ -115,7 +142,9 @@ export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
                 {categoryName !== "Uncategorized" && (
                   <Btn
                     onClick={() =>
-                      handleDeleteCategory(tasks[0].categoryId as number)
+                      handleDeleteCategory(
+                        categories.find((c) => c.name === categoryName)!.id
+                      )
                     }
                     lbl="🗑 Delete Category"
                     className="bg-red-500 text-white text-sm px-2 py-1"
@@ -124,46 +153,57 @@ export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
               </div>
 
               <div className="space-y-2">
-                {tasks.map(
-                  ({ id, text, completed, categoryId, categoryName }) => (
-                    <div
-                      key={id}
-                      className={`flex gap-3 p-2 border rounded items-center ${
-                        completed ? "bg-gray-50" : "bg-white"
+                {tasks.map(({ id, text, completed, categoryId }) => (
+                  <div
+                    key={`${categoryName}-${id}`}
+                    className={`flex gap-3 p-2 border rounded items-center ${
+                      completed ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <Btn
+                      onClick={() => handleToggleCompleted(id, completed)}
+                      lbl={completed ? "✓" : "○"}
+                      className={`w-8 h-8 text-sm ${
+                        completed
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    />
+
+                    <span
+                      className={`flex-1 ${
+                        completed
+                          ? "line-through text-gray-500 rounded-md pl-1 bg-green-200"
+                          : ""
                       }`}
                     >
-                      <Btn
-                        onClick={() => handleToggleCompleted(id, completed)}
-                        lbl={completed ? "✓" : "○"}
-                        className={`w-8 h-8 text-sm ${
-                          completed
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                      />
+                      {text}
+                    </span>
 
-                      <span
-                        className={`flex-1 ${
-                          completed
-                            ? "line-through text-gray-500 rounded-md pl-1 bg-green-200"
-                            : ""
-                        }`}
-                      >
-                        {text}
-                      </span>
+                    <select
+                      value={categoryId ?? ""}
+                      onChange={(e) =>
+                        handleUpdateCategory(id, Number(e.target.value))
+                      }
+                      className="px-3 py-1 border rounded text-sm min-w-[120px]"
+                    >
+                      <option value="" disabled>
+                        Select category...
+                      </option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
 
-                      <span className="text-sm italic text-gray-500">
-                        {categoryName || "No category"}
-                      </span>
-
-                      <Btn
-                        onClick={() => handleDeleteTask(id)}
-                        lbl="×"
-                        className="bg-red-500 pb-1 text-white w-8 h-8"
-                      />
-                    </div>
-                  )
-                )}
+                    <Btn
+                      onClick={() => handleDeleteTask(id)}
+                      lbl="×"
+                      className="bg-red-500 pb-1 text-white w-8 h-8"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
