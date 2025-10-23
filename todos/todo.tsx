@@ -10,6 +10,7 @@ import {
   deleteTask,
   toggleComplete,
   updateTaskCategory,
+  deleteCategory,
 } from "./action";
 
 interface Todo {
@@ -17,47 +18,35 @@ interface Todo {
   text: string;
   completed: boolean;
   categoryId?: number;
+  categoryName?: string;
+  username?: string;
   createdAt: string;
   completedAt?: string;
 }
 
-export default function MainComp({
-  todos = [],
-  categories = [],
-}: {
-  todos?: Todo[];
-  categories?: any[];
-}) {
-  const makeOptions = () => (
-    <>
-      <option value="" disabled>
-        Select Category...
-      </option>
-      {categories.map((c) => (
-        <option key={c.id} value={c.id}>
-          {c.name}
-        </option>
-      ))}
-    </>
-  );
+export default function MainComp({ todos = [] }: { todos?: Todo[] }) {
+  const username = todos[0]?.username || "User";
 
   const grouped = todos.reduce((acc, t) => {
-    const category = categories.find((c) => c.id === t.categoryId);
-    const name = category.name;
+    const name = t.categoryName || "Uncategorized";
     (acc[name] ||= []).push(t);
     return acc;
   }, {} as Record<string, Todo[]>);
 
-  async function handleAddTask(e) {
+  async function handleAddTask(e: any) {
     const data = getFormData(e);
     await addTask(data);
     e.target.reset();
   }
 
-  async function handleAddCategory(e) {
+  async function handleAddCategory(e: any) {
     const data = getFormData(e);
     await addCategory(data);
     e.target.reset();
+  }
+
+  async function handleDeleteCategory(categoryId: number) {
+    await deleteCategory(categoryId);
   }
 
   async function handleToggleCompleted(id: number, completed: boolean) {
@@ -73,109 +62,108 @@ export default function MainComp({
   }
 
   return (
-    <main className="flex flex-col items-start rounded-md border max-w-[500px] border-black m-5 p-10 ">
-      <h1 className="text-3xl font-bold">Create</h1>
+    <main className="flex flex-col items-start rounded-md border max-w-[600px] border-black m-5 p-10">
+      <h1 className="text-3xl font-bold mb-6">
+        Welcome, <span className="text-blue-600">{username}</span> 👋
+      </h1>
+
       <form
-        className="flex border-2 rounded-md border-green-200 bg-green-50 p-2"
+        className="flex flex-col border-2 rounded-md border-green-200 bg-green-50 p-3 w-full mb-6"
         onSubmit={handleAddTask}
       >
-        <Input
-          name="text"
-          lbl="New task:"
-          placeholder="Enter task..."
-          required
-          className=""
-        ></Input>
-        <div>
-          <p>Category Task:</p>
-          <div className="flex">
-            <select
-              name="categoryId"
-              required
-              className="flex items-center pl-7 px-3 py-2 border rounded-lg"
-              defaultValue=""
-            >
-              <option className="bg-white" value="" disabled>
-                Select category...
-              </option>
-              {categories.map((c) => (
-                <option value={c.id} key={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <Btn className="bg-blue-400" lbl="Add Task">
-              {" "}
-            </Btn>
-          </div>
+        <h2 className="text-lg font-semibold mb-2">Add a new task:</h2>
+        <div className="flex gap-2">
+          <Input
+            name="text"
+            placeholder="Enter task..."
+            required
+            className="flex-1"
+          />
+          <Input
+            name="categoryId"
+            placeholder="Enter Category ID"
+            required
+            className="w-32"
+          />
+          <Btn className="bg-blue-400" lbl="Add Task" />
         </div>
       </form>
 
       <form
-        className="mt-6 border-2 rounded-md border-green-200 bg-green-50 p-2 w-full"
+        className="border-2 rounded-md border-green-200 bg-green-50 p-3 w-full mb-6"
         onSubmit={handleAddCategory}
       >
-        <h2>Create New Category:</h2>
-        <div className="flex">
-          <Input name="name" placeholder="New category..." required></Input>
-          <Btn className="bg-green-400" lbl="Add Category">
-            {" "}
-          </Btn>
+        <h2 className="text-lg font-semibold mb-2">Create New Category:</h2>
+        <div className="flex gap-2">
+          <Input name="name" placeholder="New category..." required />
+          <Btn className="bg-green-400" lbl="Add Category" />
         </div>
       </form>
-      <h2 className="font-bold">All Todos ({todos.length})</h2>
+
+      <h2 className="font-bold mb-2">All Todos ({todos.length})</h2>
       {todos.length === 0 ? (
         <p className="text-gray-500 italic">No todos yet</p>
       ) : (
         <div className="space-y-6 w-full">
-          {Object.entries(grouped).map(([cat, tasks]) => (
-            <div key={cat}>
-              <h3 className="font-bold mb-2">
-                {cat} ({tasks.length})
-              </h3>
+          {Object.entries(grouped).map(([categoryName, tasks]) => (
+            <div key={categoryName}>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold">
+                  {categoryName} ({tasks.length})
+                </h3>
+
+                {categoryName !== "Uncategorized" && (
+                  <Btn
+                    onClick={() =>
+                      handleDeleteCategory(tasks[0].categoryId as number)
+                    }
+                    lbl="🗑 Delete Category"
+                    className="bg-red-500 text-white text-sm px-2 py-1"
+                  />
+                )}
+              </div>
+
               <div className="space-y-2">
-                {tasks.map(({ id, text, completed, categoryId }) => (
-                  <div
-                    key={id}
-                    className={`flex gap-3 p-2 border rounded ${
-                      completed ? "bg-gray-50" : "bg-white"
-                    }`}
-                  >
-                    <Btn
-                      onClick={() => handleToggleCompleted(id, completed)}
-                      lbl={completed ? "✓" : "○"}
-                      className={`w-8 h-8 text-sm ${
-                        completed ? "bg-green-500 text-white" : "bg-gray-200"
-                      }`}
-                    />
-
-                    <span
-                      className={`flex-1 ${
-                        completed
-                          ? "line-through text-gray-500 rounded-md pl-1 bg-green-200"
-                          : ""
+                {tasks.map(
+                  ({ id, text, completed, categoryId, categoryName }) => (
+                    <div
+                      key={id}
+                      className={`flex gap-3 p-2 border rounded items-center ${
+                        completed ? "bg-gray-50" : "bg-white"
                       }`}
                     >
-                      {text}
-                    </span>
+                      <Btn
+                        onClick={() => handleToggleCompleted(id, completed)}
+                        lbl={completed ? "✓" : "○"}
+                        className={`w-8 h-8 text-sm ${
+                          completed
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-200 text-gray-700"
+                        }`}
+                      />
 
-                    <select
-                      value={categoryId || ""}
-                      onChange={(e) =>
-                        handleUpdateCategory(id, Number(e.target.value))
-                      }
-                      className="px-3 pl-10 py-1 pr-8 border rounded text-sm min-w-[120px]"
-                    >
-                      {makeOptions()}
-                    </select>
+                      <span
+                        className={`flex-1 ${
+                          completed
+                            ? "line-through text-gray-500 rounded-md pl-1 bg-green-200"
+                            : ""
+                        }`}
+                      >
+                        {text}
+                      </span>
 
-                    <Btn
-                      onClick={() => handleDeleteTask(id)}
-                      lbl="×"
-                      className="bg-red-500 pb-1 text-white w-8 h-8"
-                    />
-                  </div>
-                ))}
+                      <span className="text-sm italic text-gray-500">
+                        {categoryName || "No category"}
+                      </span>
+
+                      <Btn
+                        onClick={() => handleDeleteTask(id)}
+                        lbl="×"
+                        className="bg-red-500 pb-1 text-white w-8 h-8"
+                      />
+                    </div>
+                  )
+                )}
               </div>
             </div>
           ))}

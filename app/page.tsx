@@ -1,13 +1,9 @@
-import { getCategories, getTodos } from "@/todos/action";
-import MainComp from "@/todos/todo";
+import UserChoice from "@/todos/userChoice";
 
 export default async function Home() {
-  const todos = await getTodos();
-  const categories = await getCategories();
-
   return (
     <div>
-      <MainComp todos={todos} categories={categories} />
+      <UserChoice />
     </div>
   );
 }
